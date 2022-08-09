@@ -19,6 +19,12 @@
         android:layout_height="wrap_content"
         android:text="Преобразовать" />
 
+    <Button
+        android:id="@+id/submit_rx_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="RX" />
+
     <TextView
         android:id="@+id/result_text_view"
         android:textSize="42sp"
