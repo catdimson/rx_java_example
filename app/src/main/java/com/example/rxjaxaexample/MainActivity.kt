@@ -7,7 +7,7 @@ import androidx.annotation.WorkerThread
 import com.example.rxjaxaexample.databinding.ActivityMainBinding
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.kotlin.subscribeBy
 import io.reactivex.rxjava3.schedulers.Schedulers
 import java.lang.RuntimeException
@@ -18,9 +18,12 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var compositeDisposable: CompositeDisposable
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        compositeDisposable = CompositeDisposable()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -83,6 +86,41 @@ class MainActivity : AppCompatActivity() {
                 }
             }.start()
         }
+
+        binding.goButton.setOnClickListener {
+            val observable1 = Observable.just(binding.num1EditText.text)
+                .map { it.toString() }
+                .map { it.toInt() }
+                .observeOn(Schedulers.computation())
+                .doOnNext { Thread.sleep(2_000) }
+                .map { it * 2 }
+
+            val observable2 = Observable.just(binding.num2EditText.text)
+                .map { it.toString() }
+                .map { it.toInt() }
+                .observeOn(Schedulers.computation())
+                .doOnNext { Thread.sleep(3_000) }
+                .map { it * it }
+
+//            Observable.merge(observable1, observable2)
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .subscribe {
+//                    val oldText = binding.numTextView.text.toString() // вызовется сначала один раз, потом второй
+//                    binding.numTextView.text = "$oldText $it"
+//                }
+
+            val disposable = Observable
+                .zip(observable1, observable2) { num1, num2 ->
+                    num1 + num2
+                }
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe {
+                    val oldText =
+                        binding.numTextView.text.toString() // вызовется сначала один раз, потом второй
+                    binding.numTextView.text = "$oldText $it"
+                }
+            compositeDisposable.add(disposable)
+        }
     }
 
     @WorkerThread
@@ -108,5 +146,10 @@ class MainActivity : AppCompatActivity() {
         val date = Calendar.getInstance().time
         val dateStr = SimpleDateFormat().format(date)
         return "$input $dateStr"
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        compositeDisposable.dispose()
     }
 }
