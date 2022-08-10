@@ -8,6 +8,7 @@ import com.example.rxjaxaexample.databinding.ActivityMainBinding
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.kotlin.subscribeBy
 import io.reactivex.rxjava3.schedulers.Schedulers
 import java.lang.RuntimeException
 import java.lang.StringBuilder
@@ -25,8 +26,16 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.submitRxButton.setOnClickListener {
-            Observable.just(binding.inputEditText.text)           // just() - создать обощреваемый объект из 1 объекта
+            // помимо Observable есть
+            // Single - для единоразового выполнения (облратились в бд). Вместо onNext -> onSuccess.
+            // MayBe - тоэе с onSuccess. МОжет быть как onSuccess, так и onError
+            // Complitable - у него есть только функция .complete() и в функции подписки только onComplete
+            // Flowable - с rxjava2, на замену Observable. Данных ООЧЕНЬ много
+            // !!! Чаще всего юзают Single и Observable
+//            Observable.just(binding.inputEditText.text)           // just() - создать обощреваемый объект из 1 объекта
+            Observable.fromIterable(binding.inputEditText.text.toString().toCharArray().toList())
                 .map { it.toString() }
+                .filter { it.isNotBlank() }
                 .map { it.uppercase() }
                 .map { it.reversed() }
                 .observeOn(Schedulers.computation()) // Scheduler.io() - получение данных из сети, бд и тд. Scheduler.computation() - расчет
@@ -34,10 +43,21 @@ class MainActivity : AppCompatActivity() {
                 .observeOn(Schedulers.io())
                 .map { appendDate(it) }
                 .observeOn(AndroidSchedulers.mainThread()) // возвращаемся на главный поток, тк трогаем вьюшку
-                .subscribe {
-                    binding.resultTextView.text = it
-                }                                      // subscribe() - запускает всю цепочку. Иначе - не запустится
-                // Thread.sleep(n) в главном потоке быть не должно!!!!!
+//                .subscribe {
+//                    binding.resultTextView.text = it
+//                }                                      // subscribe() - запускает всю цепочку. Иначе - не запустится
+                .subscribeBy(
+                    onNext = {
+                        binding.resultTextView.text = it
+                    },
+                    onError = {
+                        binding.resultTextView.text = it.message
+                    },
+                    onComplete = {
+                        binding.resultTextView.text = "FINISH"
+                    }
+                )
+        // Thread.sleep(n) в главном потоке быть не должно!!!!!
                 // .observeOn() - меняет поток всем последующим операциям
         }
 
